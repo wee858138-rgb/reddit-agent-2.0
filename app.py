@@ -133,6 +133,16 @@ OUTPUT_MODE_LABELS: dict[str, OutputMode] = {
 # 侧边栏「目标 Subreddit」下拉中的自定义版块哨兵选项
 CUSTOM_SUBREDDIT_LABEL = "➕ 自定义版块…"
 
+# 动态热帖语料池：排序与时间范围选项（label -> (sort, time_filter)）
+SORT_TIME_OPTIONS = {
+    "🔥 实时飙升 Hot": ("hot", "day"),
+    "📊 今日最热 Top-Day": ("top", "day"),
+    "📊 本周最热 Top-Week": ("top", "week"),
+    "📊 本月最热 Top-Month": ("top", "month"),
+    "🏆 年度神帖 Top-Year": ("top", "year"),
+    "🏆 历史封神 Top-All": ("top", "all"),
+}
+
 STAGE1_SYSTEM_TEMPLATE = Template(
     """You are a native English Reddit writer. You receive Chinese-language source
 material and turn it into an authentic English Reddit post. NEVER mention that the
@@ -425,10 +435,14 @@ def _living_llm_fn():
     return _fn
 
 
-def build_living_corpus(subreddit, client_id, client_secret, proxy, *, llm_fn=None):
-    """抓取并提纯目标版块今日热帖，写入本地 24h 缓存池。返回 (corpus_dict, message)。"""
+def build_living_corpus(
+    subreddit, client_id, client_secret, proxy, *,
+    sort="hot", time_filter="day", llm_fn=None,
+):
+    """抓取并提纯版块热帖，写入本地 24h 缓存池（按 subreddit:sort:time_filter 区分）。"""
+    cache_key = f"{subreddit}:{sort}:{time_filter}"
     cache = get_cache_manager()
-    cached = cache.get_subreddit_corpus(subreddit)
+    cached = cache.get_subreddit_corpus(cache_key)
     if cached and cached.get("fresh"):
         return cached, "已命中本地 24h 缓存池，秒级读取。"
 
@@ -436,7 +450,7 @@ def build_living_corpus(subreddit, client_id, client_secret, proxy, *, llm_fn=No
         cache=cache, client_id=client_id, client_secret=client_secret, proxy=proxy
     )
     posts = client.fetch_subreddit_hot(
-        subreddit, limit=15, time_filter="day", include_comments=True
+        subreddit, limit=15, time_filter=time_filter, sort=sort, include_comments=True
     )
     raw_posts = [p.to_dict() for p in posts]
     cleaned_corpus = [
@@ -444,8 +458,8 @@ def build_living_corpus(subreddit, client_id, client_secret, proxy, *, llm_fn=No
         for p in posts
     ]
     style = extract_living_context(cleaned_corpus, subreddit=subreddit, llm_fn=llm_fn)
-    cache.put_subreddit_corpus(subreddit, raw_posts, cleaned_corpus, style)
-    corpus = cache.get_subreddit_corpus(subreddit)
+    cache.put_subreddit_corpus(cache_key, raw_posts, cleaned_corpus, style)
+    corpus = cache.get_subreddit_corpus(cache_key)
     return corpus, f"已抓取 {len(posts)} 个热帖并提纯写入缓存。"
 
 
@@ -817,7 +831,18 @@ with tab_rag:
     else:
         living_target_sub = living_sub_choice
 
-    living_corpus = get_cache_manager().get_subreddit_corpus(living_target_sub)
+    st.session_state["rag_living_sub"] = living_target_sub
+
+    _sort_time_label = st.selectbox(
+        "📊 排序与时间范围",
+        options=list(SORT_TIME_OPTIONS.keys()),
+        index=0,
+        key="rag_sort_time",
+    )
+    _sort, _time = SORT_TIME_OPTIONS[_sort_time_label]
+    _corpus_key = f"{living_target_sub}:{_sort}:{_time}"
+
+    living_corpus = get_cache_manager().get_subreddit_corpus(_corpus_key)
     lc1, lc2 = st.columns([1, 1])
     with lc1:
         if st.button(
@@ -829,7 +854,7 @@ with tab_rag:
                 try:
                     living_corpus, _msg = build_living_corpus(
                         living_target_sub, reddit_client_id, reddit_client_secret, proxy_url,
-                        llm_fn=_living_llm_fn(),
+                        sort=_sort, time_filter=_time, llm_fn=_living_llm_fn(),
                     )
                     st.success(_msg)
                 except Exception as exc:  # noqa: BLE001
@@ -875,6 +900,28 @@ with tab_rag:
                     st.markdown("\n".join(f"- {p}" for p in patterns))
                 else:
                     st.caption("（无）")
+
+        st.markdown("#### 🎛️ 交互式点菜勾选（Human-in-the-Loop）")
+        st.caption("生成时仅注入下方勾选的语料；未勾选的内容绝不注入，防止带偏 LLM。")
+        _slang_terms = [str(s.get("term", "")).strip() for s in slang if str(s.get("term", "")).strip()]
+        st.multiselect(
+            "① 句法 / 钩子注入（默认全选）",
+            options=patterns,
+            default=list(patterns),
+            key="rag_syntax_sel",
+        )
+        st.multiselect(
+            "② 鲜活黑话注入（默认选前 3 个）",
+            options=_slang_terms,
+            default=_slang_terms[:3],
+            key="rag_slang_sel",
+        )
+        st.multiselect(
+            "③ 今日热点话题借势（默认为空，不注入）",
+            options=topics,
+            default=[],
+            key="rag_topic_sel",
+        )
 
     st.divider()
     st.markdown("#### ➕ 一键新增词条")
@@ -1484,22 +1531,37 @@ with tab_pipeline:
 
         rag_block = ""
         if gen_config.enable_rag:
+            _living_sub = st.session_state.get("rag_living_sub", gen_config.subreddit)
+            _sort_time_label = st.session_state.get(
+                "rag_sort_time", list(SORT_TIME_OPTIONS.keys())[0]
+            )
+            _sort, _time = SORT_TIME_OPTIONS.get(_sort_time_label, ("hot", "day"))
+            _corpus_key = f"{_living_sub}:{_sort}:{_time}"
+
             if auto_sync_living:
-                _corpus = get_cache_manager().get_subreddit_corpus(gen_config.subreddit)
+                _corpus = get_cache_manager().get_subreddit_corpus(_corpus_key)
                 if not (_corpus or {}).get("fresh"):
-                    with st.spinner("正在自动同步目标版块今日热帖语料…"):
+                    with st.spinner("正在自动同步目标版块热帖语料…"):
                         try:
                             build_living_corpus(
-                                gen_config.subreddit,
+                                _living_sub,
                                 reddit_client_id,
                                 reddit_client_secret,
                                 proxy_url,
+                                sort=_sort,
+                                time_filter=_time,
                                 llm_fn=_living_llm_fn(),
                             )
                         except Exception:  # noqa: BLE001
                             pass
             rag_block = get_rag_engine().retrieve_context(
-                source_material, gen_config.subreddit, top_k=5
+                source_material,
+                gen_config.subreddit,
+                top_k=5,
+                selected_syntax=st.session_state.get("rag_syntax_sel") or [],
+                selected_slang=st.session_state.get("rag_slang_sel") or [],
+                selected_topics=st.session_state.get("rag_topic_sel") or [],
+                corpus_key=_corpus_key,
             )
 
         def _stage1(cfg: GenerationConfig) -> str:

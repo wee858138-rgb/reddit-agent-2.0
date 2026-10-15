@@ -47,9 +47,11 @@ PUBLIC_JSON_TMPL = (
 OAUTH_JSON_TMPL = "https://oauth.reddit.com/comments/{post_id}?limit=15&sort=top&raw_json=1"
 RSS_TMPL = "https://{host}.reddit.com/comments/{post_id}.rss"
 SUBREDDIT_JSON_TMPL = (
-    "https://{host}.reddit.com/r/{sub}/hot.json?limit={limit}&t={time_filter}&raw_json=1"
+    "https://{host}.reddit.com/r/{sub}/{sort}.json?limit={limit}&t={time_filter}&raw_json=1"
 )
-SUBREDDIT_RSS_TMPL = "https://{host}.reddit.com/r/{sub}/hot/.rss"
+SUBREDDIT_RSS_TMPL = (
+    "https://{host}.reddit.com/r/{sub}/{sort}/.rss?limit={limit}&t={time_filter}"
+)
 
 BROWSER_HEADERS = {
     "User-Agent": CHROME_USER_AGENT,
@@ -439,11 +441,12 @@ class RedditClient:
         subreddit: str,
         limit: int = 15,
         time_filter: str = "day",
+        sort: str = "hot",
         *,
         include_comments: bool = True,
         max_comment_posts: int = 10,
     ) -> list[CleanedRedditPost]:
-        """抓取目标版块当天最热帖子（多通道降级），可选附带高赞评论。"""
+        """抓取目标版块热帖（多通道降级），sort=hot/top，time_filter 支持 hour/day/week/month/year/all。"""
         sub = _strip_r_prefix(subreddit)
         posts: list[CleanedRedditPost] = []
 
@@ -451,7 +454,7 @@ class RedditClient:
             try:
                 resp = self._get_with_backoff(
                     SUBREDDIT_JSON_TMPL.format(
-                        host=host, sub=sub, limit=limit, time_filter=time_filter
+                        host=host, sub=sub, sort=sort, limit=limit, time_filter=time_filter
                     )
                 )
                 data = self._json_or_raise(resp)
@@ -466,7 +469,7 @@ class RedditClient:
                 try:
                     resp = self._get_with_backoff(
                         SUBREDDIT_RSS_TMPL.format(
-                            host=host, sub=sub, limit=limit, time_filter=time_filter
+                            host=host, sub=sub, sort=sort, limit=limit, time_filter=time_filter
                         ),
                         headers={"Accept": "application/rss+xml, application/xml, text/xml, */*"},
                         use_curl=False,

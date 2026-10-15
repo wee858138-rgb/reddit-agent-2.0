@@ -319,17 +319,32 @@ class RagEngine:
         source_text: str,
         subreddit: str,
         top_k: int = 5,
+        *,
+        selected_syntax: Optional[list[str]] = None,
+        selected_slang: Optional[list[str]] = None,
+        selected_topics: Optional[list[str]] = None,
+        corpus_key: Optional[str] = None,
     ) -> str:
-        """生成可直接注入 Stage1/Stage2/ModeA/B 的完整 RAG 块（动态 + 静态）。"""
-        return self.retrieve_full_context(source_text, subreddit, top_k=top_k)
+        """生成可注入 Stage1/Stage2/ModeA/B 的完整 RAG 块（静态词典 + 用户勾选动态语料）。"""
+        return self.retrieve_full_context(
+            source_text,
+            subreddit,
+            top_k=top_k,
+            selected_syntax=selected_syntax,
+            selected_slang=selected_slang,
+            selected_topics=selected_topics,
+            corpus_key=corpus_key,
+        )
 
     # ------------------------------------------------------------------
     # 动态热帖语料 RAG（Living Context）
     # ------------------------------------------------------------------
 
-    def get_living_context(self, subreddit: str) -> Optional[dict[str, Any]]:
+    def get_living_context(
+        self, subreddit: str, corpus_key: Optional[str] = None
+    ) -> Optional[dict[str, Any]]:
         """读取目标版块的当日热帖语料池（含 24h fresh 标记）。"""
-        return self._cache.get_subreddit_corpus(subreddit)
+        return self._cache.get_subreddit_corpus(corpus_key or subreddit)
 
     def _living_index(self, subreddit: str, corpus: dict[str, Any]) -> Optional[TfidfIndex]:
         idx = self._index_cache.get(subreddit)
@@ -372,41 +387,78 @@ class RagEngine:
             "age_seconds": corpus.get("age_seconds", 0),
         }
 
-    def retrieve_full_context(self, source_text: str, subreddit: str, top_k: int = 5) -> str:
-        """组装 LIVING_SUBREDDIT_RAG_CONTEXT（动态热帖 + 鲜活黑话/句式 + 静态词典）。"""
+    def retrieve_full_context(
+        self,
+        source_text: str,
+        subreddit: str,
+        top_k: int = 5,
+        *,
+        selected_syntax: Optional[list[str]] = None,
+        selected_slang: Optional[list[str]] = None,
+        selected_topics: Optional[list[str]] = None,
+        corpus_key: Optional[str] = None,
+    ) -> str:
+        """组装 RAG 注入块：静态词典命中 + 用户勾选的句法/黑话/热点（去臃肿、防跑题）。"""
         parts: list[str] = []
 
-        living = self.retrieve_living_context(source_text, subreddit, top_k=3)
-        if living.get("available"):
-            style = living.get("style") or {}
-            fetched = (living.get("fetched_at") or "")[:16]
-            lines = [
-                f"LIVING_SUBREDDIT_RAG_CONTEXT (r/{subreddit.lstrip('r/')}, fetched {fetched}):"
-            ]
+        corpus = self.get_living_context(subreddit, corpus_key=corpus_key)
+        style: dict[str, Any] = {}
+        if corpus and corpus.get("fresh"):
+            style = corpus.get("extracted_style") or {}
+
+        def _clean(lst):
+            return [str(x).strip() for x in (lst or []) if x and str(x).strip()]
+
+        if selected_topics is not None:
+            topics = _clean(selected_topics)
+        else:
             topics = style.get("trending_topics") or []
-            if topics:
-                lines.append("[今日热议话题]")
-                lines.extend(f"- {t}" for t in topics)
-            slang = style.get("living_slang") or []
-            if slang:
-                lines.append("[今日鲜活黑话/行话]")
-                for s in slang:
-                    term = s.get("term", "")
-                    ctx = s.get("context", "")
-                    lines.append(f"- {term}" + (f" —— {ctx}" if ctx else ""))
-            patterns = style.get("syntax_patterns") or []
-            if patterns:
-                lines.append("[今日高赞句法/钩子范例]")
-                lines.extend(f"- {p}" for p in patterns)
-            snippets = living.get("snippets") or []
-            if snippets:
-                lines.append("[最相关真实热帖原句 Top-3]")
-                for i, h in enumerate(snippets, 1):
-                    lines.append(f"{i}. (score={h['score']}) {h['text']}")
-            lines.append("")
-            parts.append("\n".join(lines))
+        if selected_slang is not None:
+            slang_terms = _clean(selected_slang)
+        else:
+            slang_terms = [
+                str(s.get("term", "")).strip()
+                for s in (style.get("living_slang") or [])
+                if isinstance(s, dict) and str(s.get("term", "")).strip()
+            ]
+        if selected_syntax is not None:
+            syntax = _clean(selected_syntax)
+        else:
+            syntax = style.get("syntax_patterns") or []
+
+        living_lines: list[str] = []
+        if syntax:
+            living_lines.append("[句法/钩子骨架（可迁移句式，仅模仿节奏，勿照抄事实）]")
+            living_lines.extend(f"- {p}" for p in syntax)
+        if slang_terms:
+            slang_map = {
+                str(s.get("term", "")): str(s.get("context", ""))
+                for s in (style.get("living_slang") or [])
+                if isinstance(s, dict)
+            }
+            living_lines.append("[鲜活黑话/俚语（仅作语感染色，语境不符则忽略）]")
+            for t in slang_terms:
+                ctx = slang_map.get(t, "")
+                living_lines.append(f"- {t}" + (f" —— {ctx}" if ctx else ""))
+        if topics:
+            living_lines.append("[今日热点话题（按需借势，仅当与素材自然相关时顺带提及）]")
+            living_lines.extend(f"- {t}" for t in topics)
+
+        if living_lines:
+            living_lines.insert(0, "LIVING_SUBREDDIT_RAG_CONTEXT:")
+            living_lines.append("")
+            parts.append("\n".join(living_lines))
 
         parts.append(self._static_context(source_text, subreddit, top_k=top_k))
+
+        parts.append(
+            "RAG_GUARDRAIL:\n"
+            "  Treat the RAG corpus above as a tone/style dye ONLY. If a term, topic or "
+            "  pattern does not fit the source material's context, ignore it outright. "
+            "  Always obey the source material's facts and the core viewpoint; never let "
+            "  RAG content override or derail the post."
+        )
+
         return "\n".join(p for p in parts if p).rstrip()
 
     def _static_context(self, source_text: str, subreddit: str, top_k: int = 5) -> str:
