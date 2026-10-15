@@ -1,0 +1,153 @@
+{
+  "version": 1,
+  "updated_at": "2026-04-15T00:00:00+00:00",
+  "entries": [
+    {
+      "term": "TIL",
+      "subreddits": ["all", "r/todayilearned"],
+      "en_meaning": "Today I Learned — prefacing a surprising fact you just discovered.",
+      "zh_equivalent": "今日份冷知识 / 今天才知道",
+      "example": "TIL the 'silent' in silent letters used to be pronounced in Middle English."
+    },
+    {
+      "term": "TIFU",
+      "subreddits": ["all", "r/tifu"],
+      "en_meaning": "Today I Fucked Up — storytelling opener for a personal mistake saga.",
+      "zh_equivalent": "今日翻车日记 / 我又作死了",
+      "example": "TIFU by telling my boss the 'anonymous' survey feedback was mine."
+    },
+    {
+      "term": "AITA",
+      "subreddits": ["all", "r/AmItheAsshole"],
+      "en_meaning": "Am I The Asshole — asking the crowd to judge a social conflict.",
+      "zh_equivalent": "我有错吗 / 求网友判个理",
+      "example": "AITA for refusing to host Thanksgiving after my in-laws dunked on my cooking last year?"
+    },
+    {
+      "term": "ELI5",
+      "subreddits": ["all", "r/explainlikeimfive"],
+      "en_meaning": "Explain Like I'm 5 — request for a plain-language explanation.",
+      "zh_equivalent": "用大白话讲 / 小学生能听懂版",
+      "example": "ELI5: why does adding RAM sometimes not make my laptop feel faster?"
+    },
+    {
+      "term": "TL;DR",
+      "subreddits": ["all"],
+      "en_meaning": "Too Long; Didn't Read — a one-line summary for impatient skimmers.",
+      "zh_equivalent": "懒人包 / 一句话总结",
+      "example": "TL;DR — the update fixed the crash but nuked half the plugins."
+    },
+    {
+      "term": "OP",
+      "subreddits": ["all"],
+      "en_meaning": "Original Poster — the person who started the thread.",
+      "zh_equivalent": "楼主 / 原帖作者",
+      "example": "OP edited the post after the top comment called out the missing logs."
+    },
+    {
+      "term": "plot twist",
+      "subreddits": ["all"],
+      "en_meaning": "A sudden, ironic turn that flips the expected ending.",
+      "zh_equivalent": "剧情反转 / 万万没想到",
+      "example": "Plot twist: the 'senior hire' was the intern's alt account the whole time."
+    },
+    {
+      "term": "aged like milk",
+      "subreddits": ["all"],
+      "en_meaning": "A take or prediction that aged terribly and looks foolish now.",
+      "zh_equivalent": "打脸速度光速 / 预言翻车",
+      "example": "That 'nobody will use LLMs for real work' take aged like milk."
+    },
+    {
+      "term": "copium",
+      "subreddits": ["all"],
+      "en_meaning": "Ironic 'coping' — clinging to a flimsy hope after a loss or failure.",
+      "zh_equivalent": "精神胜利法 / 续命幻想",
+      "example": "Calling a 40% drop a 'healthy correction' is peak copium."
+    },
+    {
+      "term": "touch grass",
+      "subreddits": ["all"],
+      "en_meaning": "Go outside / log off — you're too online or overreacting.",
+      "zh_equivalent": "该出门透透气了 / 少刷点网",
+      "example": "Bro wrote a 2k-word essay about a downvote. Touch grass."
+    },
+    {
+      "term": "strawman",
+      "subreddits": ["all"],
+      "en_meaning": "Misrepresenting someone's argument to make it easier to attack.",
+      "zh_equivalent": "稻草人谬误 / 歪曲对方观点再喷",
+      "example": "I said the API is slow — don't strawman that into 'I hate the whole product'."
+    },
+    {
+      "term": "gaslighting",
+      "subreddits": ["all"],
+      "en_meaning": "Making someone doubt their own memory or perception of events.",
+      "zh_equivalent": "煤气灯效应 / 把人绕疯的甩锅话术",
+      "example": "Telling users the outage 'never happened' while status page is red is gaslighting."
+    },
+    {
+      "term": "echo chamber",
+      "subreddits": ["all"],
+      "en_meaning": "A space where the same opinions bounce around with no pushback.",
+      "zh_equivalent": "回音室 / 小圈子互相加戏",
+      "example": "That Discord is an echo chamber — every dissent gets dogpiled in under a minute."
+    },
+    {
+      "term": "rent free",
+      "subreddits": ["all"],
+      "en_meaning": "Living in someone's head rent-free — they can't stop thinking about you/it.",
+      "zh_equivalent": "免费住进别人脑子里 / 心里过不去那道坎",
+      "example": "He still replies to a two-year-old roast. Bro's living rent free in that thread."
+    },
+    {
+      "term": "based",
+      "subreddits": ["all"],
+      "en_meaning": "Unapologetically authentic / agreeing hard with a blunt take.",
+      "zh_equivalent": "说人话有骨气 / 硬气发言（褒义跟帖）",
+      "example": "Shipping the dull-but-correct fix instead of the flashy demo? Based."
+    },
+    {
+      "term": "hot take",
+      "subreddits": ["all"],
+      "en_meaning": "A spicy, controversial opinion dropped on purpose.",
+      "zh_equivalent": "炸裂观点 / 故意引战的锐评",
+      "example": "Hot take: most 'AI agents' demos are just brittle scripts with a chat UI."
+    },
+    {
+      "term": "bike-shedding",
+      "subreddits": ["all", "r/programming", "r/technology"],
+      "en_meaning": "Obsessing over trivial details while ignoring the hard problem (Parkinson's law of trivia).",
+      "zh_equivalent": "自行车棚效应 / 纠结按钮颜色不管架构",
+      "example": "We've spent three meetings renaming the feature flag. Classic bike-shedding."
+    },
+    {
+      "term": "rubber ducking",
+      "subreddits": ["all", "r/programming"],
+      "en_meaning": "Explaining a bug out loud (to a rubber duck) until the fix clicks.",
+      "zh_equivalent": "橡皮鸭调试法 / 讲着讲着自己就通了",
+      "example": "I rubber-ducked the race condition to my empty Slack huddle and found the missing lock."
+    },
+    {
+      "term": "skill issue",
+      "subreddits": ["all", "r/programming"],
+      "en_meaning": "Tongue-in-cheek blame: the problem is the user's skill, not the tool.",
+      "zh_equivalent": "技术不行别怪工具 / 纯纯技术问题（阴阳）",
+      "example": "Can't reproduce the bug on a clean env? Skill issue — or your local config is haunted."
+    },
+    {
+      "term": "LGTM",
+      "subreddits": ["all", "r/programming"],
+      "en_meaning": "Looks Good To Me — casual code-review approval.",
+      "zh_equivalent": "看起来没问题 / 过审（程序员黑话）",
+      "example": "Tests are green and the diff is tiny — LGTM, ship it."
+    },
+    {
+      "term": "yak shaving",
+      "subreddits": ["all", "r/programming"],
+      "en_meaning": "A chain of tangential chores you must finish before the real task.",
+      "zh_equivalent": "剃牦牛毛 / 为干正事先绕十个弯",
+      "example": "I just wanted to tweak a CSV — now I'm yak-shaving a broken Python install."
+    }
+  ]
+}

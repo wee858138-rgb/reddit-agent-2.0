@@ -1,0 +1,5 @@
+streamlit>=1.36
+openai>=1.30
+requests>=2.31
+curl_cffi>=0.6
+
